@@ -1,0 +1,2 @@
+,contractSymbol,lastTradeDate,strike,lastPrice,bid,ask,change,percentChange,volume,openInterest,impliedVolatility,inTheMoney,contractSize,currency
+51,AAPL240621P00215000,2024-06-21 18:26:01+00:00,215.0,4.18,4.1,4.2,-1.3800001,-24.820147,4129.0,18768,1.0000000000000003e-05,True,REGULAR,USD
