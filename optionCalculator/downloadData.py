@@ -48,7 +48,7 @@ class DownloadFromYfinance:
 
 if __name__ == "__main__":
     #DownloadFromYfinance.download_stock_data_save_to_local('AAPL', '2024-06-18', '2024-06-21')
-    #DownloadFromYfinance.download_option_data_save_to_local('AAPL', 'put', 200, 225, '2024-06-28')
+    #DownloadFromYfinance.download_option_data_save_to_local('AAPL', 'put', 200, 225, '2024-06-21')
 
     import pandas as pd
     import matplotlib.pyplot as plt
@@ -105,6 +105,9 @@ if __name__ == "__main__":
 
 
     # 调用函数
-    plot_option_data('AAPL', 200, 225, '2024-06-28')
+    #plot_option_data('NVDA', 120, 130, '2024-06-28')
+    #plot_option_data('AAPL', 200, 225, '2024-06-21')
+
+
 
 
