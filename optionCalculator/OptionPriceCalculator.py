@@ -91,6 +91,40 @@ class OptionPriceCalculator:
         gamma = norm.pdf(d1) / (S * sigma * np.sqrt(T))
         return gamma
 
+    @staticmethod
+    def integrate_delta(initial_stock_price, final_stock_price, K, T, r, sigma, option_type='call'):
+        stock_prices = np.linspace(initial_stock_price, final_stock_price, 100)
+        option_prices = [OptionPriceCalculator.black_scholes(S, K, T, r, sigma, option_type) for S in stock_prices]
+        deltas = [OptionPriceCalculator.get_delta(S, K, T, r, sigma, option_type) for S in stock_prices]
+
+        integrated_prices = [option_prices[0]]
+        for i in range(1, len(stock_prices)):
+            ds = stock_prices[i] - stock_prices[i - 1]
+            integrated_price = integrated_prices[-1] + deltas[i - 1] * ds
+            integrated_prices.append(integrated_price)
+
+        return stock_prices, integrated_prices
+
+    @staticmethod
+    def integrate_gamma(initial_stock_price, final_stock_price, K, T, r, sigma, option_type='call'):
+        stock_prices = np.linspace(initial_stock_price, final_stock_price, 100)
+        deltas = [OptionPriceCalculator.get_delta(S, K, T, r, sigma, option_type) for S in stock_prices]
+        gammas = [OptionPriceCalculator.get_gamma(S, K, T, r, sigma) for S in stock_prices]
+
+        integrated_deltas = [deltas[0]]
+        for i in range(1, len(stock_prices)):
+            ds = stock_prices[i] - stock_prices[i - 1]
+            integrated_delta = integrated_deltas[-1] + gammas[i - 1] * ds
+            integrated_deltas.append(integrated_delta)
+
+        integrated_prices = [OptionPriceCalculator.black_scholes(initial_stock_price, K, T, r, sigma, option_type)]
+        for i in range(1, len(stock_prices)):
+            ds = stock_prices[i] - stock_prices[i - 1]
+            integrated_price = integrated_prices[-1] + integrated_deltas[i - 1] * ds
+            integrated_prices.append(integrated_price)
+
+        return stock_prices, integrated_prices
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
@@ -257,5 +291,51 @@ if __name__ == "__main__":
 
     # -----------------------------------------------------------------------------------------------------------------
 
+    # 获取行权价为125的看跌期权市场价格
+    strike_price = 125
+    put_option_market_price = puts[puts['strike'] == strike_price]['lastPrice'].values[0]
+    print(f"Market Price of 125 Strike Put Option: {put_option_market_price}")
 
+    # 计算隐含波动率
+    expiration_date = pd.to_datetime(expiration)
+    current_date = pd.Timestamp('now')
+    days_to_expiration = (expiration_date - current_date).days
 
+    calc = OptionPriceCalculator()
+    risk_free_rate = calc.get_risk_free_rate(days_to_expiration)
+    implied_vol = calc.implied_volatility(put_option_market_price, current_stock_price, strike_price,
+                                          days_to_expiration / 365, risk_free_rate, option_type='put')
+    print(f"Implied Volatility: {implied_vol:.2%}")
+
+    # 使用积分Delta和Gamma计算期权价格变化
+    initial_stock_price = current_stock_price - 20
+    final_stock_price = current_stock_price + 20
+
+    stock_prices_delta, integrated_prices_delta = calc.integrate_delta(initial_stock_price, final_stock_price,
+                                                                       strike_price, days_to_expiration / 365,
+                                                                       risk_free_rate, implied_vol, option_type='put')
+    stock_prices_gamma, integrated_prices_gamma = calc.integrate_gamma(initial_stock_price, final_stock_price,
+                                                                       strike_price, days_to_expiration / 365,
+                                                                       risk_free_rate, implied_vol, option_type='put')
+
+    # 绘制期权价格图
+    plt.figure(figsize=(14, 7))
+
+    # 通过积分Delta得到期权价格图
+    plt.subplot(1, 2, 1)
+    plt.plot(stock_prices_delta, integrated_prices_delta, marker='o', linestyle='-', color='b')
+    plt.xlabel('Stock Price')
+    plt.ylabel('Option Price')
+    plt.title('Option Price vs Stock Price (Integrated Delta)')
+    plt.grid(True)
+
+    # 通过二次积分Gamma得到期权价格图
+    plt.subplot(1, 2, 2)
+    plt.plot(stock_prices_gamma, integrated_prices_gamma, marker='o', linestyle='-', color='r')
+    plt.xlabel('Stock Price')
+    plt.ylabel('Option Price')
+    plt.title('Option Price vs Stock Price (Integrated Gamma)')
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.show()
