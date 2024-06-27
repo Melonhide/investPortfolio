@@ -13,16 +13,18 @@ if __name__ == "__main__":
 
     # 获取当前股价
     current_stock_price = stock.history(period='1d')['Close'].iloc[-1]
+    #current_stock_price = 129.17
     print(f"Current Stock Price: {current_stock_price}")
 
     # 获取期权链
-    expiration = '2024-06-28'
+    expiration = '2024-07-05'
     options = stock.option_chain(expiration)
     puts = options.puts
 
     # 获取行权价为125的看跌期权市场价格
-    strike_price = 115
+    strike_price = 122
     put_option_market_price = puts[puts['strike'] == strike_price]['lastPrice'].values[0]
+    #put_option_market_price = 3.2
     print(f"Market Price of 125 Strike Put Option: {put_option_market_price}")
 
     # 计算隐含波动率
@@ -97,7 +99,7 @@ if __name__ == "__main__":
     plt.xlabel('Stock Price')
     plt.ylabel('Total Profit')
     plt.title(
-        f'Total Profit vs Stock Price\n(Current Stock Price: {current_stock_price}, Strike Price: {strike_price}, '
+        f'Total Profit vs Stock Price\n(Ticker: {ticker}. Current Stock Price: {current_stock_price},\nStrike Price: {strike_price}, '
         f'Put Option Price: {put_option_market_price}, Shares: {num_shares}, Option Contracts: {num_options})')
     plt.grid(True)
 
