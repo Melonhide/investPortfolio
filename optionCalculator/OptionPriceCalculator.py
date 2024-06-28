@@ -106,6 +106,20 @@ class OptionPriceCalculator:
         return stock_prices, integrated_prices
 
     @staticmethod
+    def integrate_delta_stress(initial_stock_price, final_stock_price, K, T, r, sigma, option_type='call', stress_val=0):
+        stock_prices = np.linspace(initial_stock_price, final_stock_price, 100)
+        option_prices = [OptionPriceCalculator.black_scholes(S, K, T, r, sigma, option_type) for S in stock_prices]
+        deltas = [OptionPriceCalculator.get_delta(S, K, T, r, sigma, option_type) for S in stock_prices]
+
+        integrated_prices = [option_prices[0]]
+        for i in range(1, len(stock_prices)):
+            ds = stock_prices[i] - stock_prices[i - 1]
+            integrated_price = integrated_prices[-1] + (deltas[i - 1]-stress_val) * ds
+            integrated_prices.append(integrated_price)
+
+        return stock_prices, integrated_prices
+
+    @staticmethod
     def integrate_gamma(initial_stock_price, final_stock_price, K, T, r, sigma, option_type='call'):
         stock_prices = np.linspace(initial_stock_price, final_stock_price, 100)
         deltas = [OptionPriceCalculator.get_delta(S, K, T, r, sigma, option_type) for S in stock_prices]
@@ -146,7 +160,7 @@ if __name__ == "__main__":
     print(f"Current Stock Price: {current_stock_price}")
 
     # 获取期权链
-    expiration = '2024-06-28'
+    expiration = '2024-07-19'
     options = stock.option_chain(expiration)
     puts = options.puts
 
@@ -172,37 +186,38 @@ if __name__ == "__main__":
 
     #-------------------------------------------------------------------------------------------------------------------
     # 获取行权价格在100到130之间的看跌期权市场价格
-    # strike_prices = np.arange(100, 131, 1)
-    # put_prices = []
-    # implied_vols = []
-    #
-    # expiration_date = pd.to_datetime(expiration)
-    # current_date = pd.Timestamp('now')
-    # days_to_expiration = (expiration_date - current_date).days
-    #
-    # calc = OptionPriceCalculator()
-    # risk_free_rate = calc.get_risk_free_rate(days_to_expiration)
-    #
-    # for strike_price in strike_prices:
-    #     try:
-    #         put_option_market_price = puts[puts['strike'] == strike_price]['lastPrice'].values[0]
-    #         put_prices.append(put_option_market_price)
-    #         implied_vol = calc.implied_volatility(put_option_market_price, current_stock_price, strike_price,
-    #                                               days_to_expiration / 365, risk_free_rate, option_type='put')
-    #         implied_vols.append(implied_vol)
-    #     except IndexError:
-    #         print(f"No market price available for strike price {strike_price}")
-    #         put_prices.append(None)
-    #         implied_vols.append(None)
-    #
-    # # 绘制隐含波动率图
-    # plt.figure(figsize=(10, 6))
-    # plt.plot(strike_prices, implied_vols, marker='o', linestyle='-', color='b')
-    # plt.xlabel('Strike Price')
-    # plt.ylabel('Implied Volatility')
-    # plt.title('Implied Volatility vs Strike Price for NVDA Put Options')
-    # plt.grid(True)
-    # plt.show()
+    strike_prices = np.arange(100, 130, 1)
+    put_prices = []
+    implied_vols = []
+
+    expiration_date = pd.to_datetime(expiration)
+    current_date = pd.Timestamp('now')
+    days_to_expiration = (expiration_date - current_date).days
+
+    calc = OptionPriceCalculator()
+    risk_free_rate = calc.get_risk_free_rate(days_to_expiration)
+
+    for strike_price in strike_prices:
+        try:
+            put_option_market_price = puts[puts['strike'] == strike_price]['lastPrice'].values[0]
+            put_prices.append(put_option_market_price)
+            implied_vol = calc.implied_volatility(put_option_market_price, current_stock_price, strike_price,
+                                                  days_to_expiration / 365, risk_free_rate, option_type='put')
+            implied_vols.append(implied_vol)
+            print(f"Strike Price: {strike_price}, Impl Vol: {implied_vol:.4f}")
+        except IndexError:
+            print(f"No market price available for strike price {strike_price}")
+            put_prices.append(None)
+            implied_vols.append(None)
+
+    # 绘制隐含波动率图
+    plt.figure(figsize=(10, 6))
+    plt.plot(strike_prices, implied_vols, marker='o', linestyle='-', color='b')
+    plt.xlabel('Strike Price')
+    plt.ylabel('Implied Volatility')
+    plt.title('Implied Volatility vs Strike Price for NVDA Put Options')
+    plt.grid(True)
+    plt.show()
     #-----------------------------------------------------------------------------------------------------------------
 
 
@@ -233,7 +248,7 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------------------------------------------------
 
     # -----------------------------------------------------------------------------------------------------------------
-    # # 获取行权价格在100到130之间的看跌期权市场价格
+    # 获取行权价格在100到130之间的看跌期权市场价格
     # strike_prices = np.arange(100, 131, 1)
     # implied_vols = []
     #
@@ -291,51 +306,51 @@ if __name__ == "__main__":
 
     # -----------------------------------------------------------------------------------------------------------------
 
-    # 获取行权价为125的看跌期权市场价格
-    strike_price = 125
-    put_option_market_price = puts[puts['strike'] == strike_price]['lastPrice'].values[0]
-    print(f"Market Price of 125 Strike Put Option: {put_option_market_price}")
-
-    # 计算隐含波动率
-    expiration_date = pd.to_datetime(expiration)
-    current_date = pd.Timestamp('now')
-    days_to_expiration = (expiration_date - current_date).days
-
-    calc = OptionPriceCalculator()
-    risk_free_rate = calc.get_risk_free_rate(days_to_expiration)
-    implied_vol = calc.implied_volatility(put_option_market_price, current_stock_price, strike_price,
-                                          days_to_expiration / 365, risk_free_rate, option_type='put')
-    print(f"Implied Volatility: {implied_vol:.2%}")
-
-    # 使用积分Delta和Gamma计算期权价格变化
-    initial_stock_price = current_stock_price - 20
-    final_stock_price = current_stock_price + 20
-
-    stock_prices_delta, integrated_prices_delta = calc.integrate_delta(initial_stock_price, final_stock_price,
-                                                                       strike_price, days_to_expiration / 365,
-                                                                       risk_free_rate, implied_vol, option_type='put')
-    stock_prices_gamma, integrated_prices_gamma = calc.integrate_gamma(initial_stock_price, final_stock_price,
-                                                                       strike_price, days_to_expiration / 365,
-                                                                       risk_free_rate, implied_vol, option_type='put')
-
-    # 绘制期权价格图
-    plt.figure(figsize=(14, 7))
-
-    # 通过积分Delta得到期权价格图
-    plt.subplot(1, 2, 1)
-    plt.plot(stock_prices_delta, integrated_prices_delta, marker='o', linestyle='-', color='b')
-    plt.xlabel('Stock Price')
-    plt.ylabel('Option Price')
-    plt.title('Option Price vs Stock Price (Integrated Delta)')
-    plt.grid(True)
-
-    # 通过二次积分Gamma得到期权价格图
-    plt.subplot(1, 2, 2)
-    plt.plot(stock_prices_gamma, integrated_prices_gamma, marker='o', linestyle='-', color='r')
-    plt.xlabel('Stock Price')
-    plt.ylabel('Option Price')
-    plt.title('Option Price vs Stock Price (Integrated Gamma)')
-    plt.grid(True)
-
-    plt.tight_layout()
-    plt.show()
+    # # 获取行权价为125的看跌期权市场价格
+    # strike_price = 125
+    # put_option_market_price = puts[puts['strike'] == strike_price]['lastPrice'].values[0]
+    # print(f"Market Price of 125 Strike Put Option: {put_option_market_price}")
+    #
+    # # 计算隐含波动率
+    # expiration_date = pd.to_datetime(expiration)
+    # current_date = pd.Timestamp('now')
+    # days_to_expiration = (expiration_date - current_date).days
+    #
+    # calc = OptionPriceCalculator()
+    # risk_free_rate = calc.get_risk_free_rate(days_to_expiration)
+    # implied_vol = calc.implied_volatility(put_option_market_price, current_stock_price, strike_price,
+    #                                       days_to_expiration / 365, risk_free_rate, option_type='put')
+    # print(f"Implied Volatility: {implied_vol:.2%}")
+    #
+    # # 使用积分Delta和Gamma计算期权价格变化
+    # initial_stock_price = current_stock_price - 20
+    # final_stock_price = current_stock_price + 20
+    #
+    # stock_prices_delta, integrated_prices_delta = calc.integrate_delta(initial_stock_price, final_stock_price,
+    #                                                                    strike_price, days_to_expiration / 365,
+    #                                                                    risk_free_rate, implied_vol, option_type='put')
+    # stock_prices_gamma, integrated_prices_gamma = calc.integrate_gamma(initial_stock_price, final_stock_price,
+    #                                                                    strike_price, days_to_expiration / 365,
+    #                                                                    risk_free_rate, implied_vol, option_type='put')
+    #
+    # # 绘制期权价格图
+    # plt.figure(figsize=(14, 7))
+    #
+    # # 通过积分Delta得到期权价格图
+    # plt.subplot(1, 2, 1)
+    # plt.plot(stock_prices_delta, integrated_prices_delta, marker='o', linestyle='-', color='b')
+    # plt.xlabel('Stock Price')
+    # plt.ylabel('Option Price')
+    # plt.title('Option Price vs Stock Price (Integrated Delta)')
+    # plt.grid(True)
+    #
+    # # 通过二次积分Gamma得到期权价格图
+    # plt.subplot(1, 2, 2)
+    # plt.plot(stock_prices_gamma, integrated_prices_gamma, marker='o', linestyle='-', color='r')
+    # plt.xlabel('Stock Price')
+    # plt.ylabel('Option Price')
+    # plt.title('Option Price vs Stock Price (Integrated Gamma)')
+    # plt.grid(True)
+    #
+    # plt.tight_layout()
+    # plt.show()
